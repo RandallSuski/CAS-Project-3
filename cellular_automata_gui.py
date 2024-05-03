@@ -20,8 +20,8 @@ class CellularAutomata2D(tk.Tk):
             # For each cell in that row 
             for col in range(length):
                 color = 'white' if (lattice[col] == '0') else 'black'
-                x0 = square_size * row
-                y0 = square_size * col 
+                x0 = square_size * col
+                y0 = square_size * row
                 x1 = x0 + square_size 
                 y1 = y0 + square_size 
                 canvas.create_rectangle(x0, y0, x1, y1, fill = color, outline = color)

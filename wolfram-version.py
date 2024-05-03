@@ -40,12 +40,38 @@ def next_lattice(current_state, rule_string, ca_radius):
         next_state += cell
     return next_state 
 
+def fitness(state):
+    first_cell = state[0]
+    for i in range(len(state)):
+        if (first_cell != state[i]):
+            return 0
+    return 1
+
+'''
+Each generation
+
+Fitness
+- if final state (not reached or not all the same color) = 0 
+- if final state is the majority from the start_state = 1 
+- else = 0 
+- total fitness = the fraction of times it produced the correct final configuration 
+
+Init: create 100 random rules (the GA's) and 100 random initial configurations 
+For each generation
+- Find the fitness for each GA 
+    - Run the GA on each of the 100 initial configurations 
+    - Calculate the fraction of times it makes the correct choice
+- Weighted randomly select 2 parents to create 2 children (50 times)
+- Use these children in next generation 
+
+textbooks_ga = "00000101000001100001010110000111000001110000010000010101010101110110010001110111000001010000000101111101111111111011011101111111"
+'''
 
 #Store each lattice as a string (where each character is a cell with state '1' or '0')
 if __name__ == "__main__":
     # CA parameters 
-    lattice_length = 80
-    ca_steps = 80   #number of time steps we will do 
+    lattice_length = 100
+    ca_steps = 100   #number of time steps we will do 
     ca_radius = 1
     ca_neighborhood = (2 * ca_radius) + 1
     ca_time_space = [] #This will hold all the lattices as we move through time steps
