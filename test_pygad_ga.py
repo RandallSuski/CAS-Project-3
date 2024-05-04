@@ -83,12 +83,11 @@ def fitness_func(ga_instance, solution, solution_idx):
         final_state = simulate_ga(start_lattice, solution, ca_radius, ca_steps)
 
         result = get_state_fitness(majority_cell, final_state)
-        if (result == 1):
-            print(f"{solution_idx} : {start_lattice}")
         fitness += result
 
     #Calculate the fraction of times it makes the correct choice
     fitness = fitness / (len(start_states) + 1)
+    print(f"{solution_idx} : {fitness}")
     return fitness
 
 def get_state_fitness(majority_cell, final_state):
