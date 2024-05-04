@@ -84,12 +84,11 @@ def fitness_func(ga_instance, solution, solution_idx):
 
         result = get_state_fitness(majority_cell, final_state)
         if (result == 1):
-            print(f" win: {start_state}")
+            print(f"{solution_idx} : {start_lattice}")
         fitness += result
 
     #Calculate the fraction of times it makes the correct choice
     fitness = fitness / (len(start_states) + 1)
-    print(f"   {solution_idx} : {fitness}")
     return fitness
 
 def get_state_fitness(majority_cell, final_state):
@@ -166,23 +165,23 @@ if __name__ == "__main__":
     normal_percents = generate_normal_1_percents(ca_start_state_count)
     for percent in normal_percents:
         lattice = random_lattice(lattice_length, percent)
-        majority_cell = '1'
+        majority_cell = 1
         if (percent < 0.5):
-            majority_cell = '0'
+            majority_cell = 0
         start_states.append([majority_cell, lattice])
 
 
     # Pygad parameters 
     num_generations = 10
-    num_parents_mating = 10  # How many parents will create children 
+    num_parents_mating = 20  # How many parents will create children 
     fitness_function = fitness_func  
     parallel_processing= None # None or ["process", 10]  # can set equal to an Int to run GA with that many threads 
     random_seed = 12345  # For reproducability 
     save_best_solutions = True
 
     gene_space = [0, 1]  
-    mutation_type = "swap"
-    mutation_percent_genes = 10
+    mutation_type = "random"
+    mutation_percent_genes = 30
     allow_duplicate_genes=True
     keep_parents = 0  # Number of parents kept in population along side children 
     crossover_type = "single_point"
