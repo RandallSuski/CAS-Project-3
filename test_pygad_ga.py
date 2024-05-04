@@ -1,18 +1,22 @@
 '''
 TODO
 - Save the solution and fitness data in a file 
+    - Could store in global variable inside the onGeneration() function 
 
 Optimize 
 - Store start state with its majority value so that we don't calculate it each simulation
 - Finding the next lattice 
     - We read the next cell and double cell value multiple times 
+    - Making it return early if nextState = currState (should be able to do this with no increased runtime)
+- Set the parallel processing to be some value (use processes over threads)
 
 '''
 import pygad
 import numpy as np 
+import random as rand 
 import matplotlib.pyplot as plt
 
-start_states = []
+start_states = []  # [Majority Cell, Lattice]
 ca_steps = 100   #number of time steps we will do 
 ca_radius = 3
 
@@ -32,9 +36,18 @@ def generate_normal_1_percents(n):
 def random_lattice(length, percent):
     lattice = []
     states = [0, 1]
-    weights = [1-percent, percent]
+
+    count1 = round(length * percent)
+    count0 = length - count1
+
     for i in range(length):
-        lattice.append(np.random.choice(states, p=weights))
+        weights = [count0, count1]
+        newCell = rand.choices(states, weights=weights, k=1)[0]
+        lattice.append(newCell)
+        if (newCell == 1):
+            count1 -= 1
+        else:
+            count0 -= 1
     return lattice 
 
 # Creates a random rule 
@@ -65,30 +78,24 @@ def fitness_func(ga_instance, solution, solution_idx):
     #Run the GA on each of the initial configurations 
     fitness = 1.0
     for start_state in start_states:
-        final_state = simulate_ga(start_state, solution, ca_radius, ca_steps)
-        fitness += get_state_fitness(start_state, final_state)
+        majority_cell = start_state[0]
+        start_lattice = start_state[1]
+        final_state = simulate_ga(start_lattice, solution, ca_radius, ca_steps)
+
+        result = get_state_fitness(majority_cell, final_state)
+        if (result == 1):
+            print(f" win: {start_state}")
+        fitness += result
 
     #Calculate the fraction of times it makes the correct choice
     fitness = fitness / (len(start_states) + 1)
-    print(f"{solution_idx} : {fitness}")
+    print(f"   {solution_idx} : {fitness}")
     return fitness
 
-def get_state_fitness(start_state, final_state):
-    # Find the most used in first
-    count1 = 0
-    count0 = 0
-    for i in range(len(start_state)):
-        if (start_state[i] == 1):
-            count1 += 1
-        else:
-            count0 += 1
-    majority_cell = 1
-    if (count0 > count1): 
-        majority_cell = 0
-
+def get_state_fitness(majority_cell, final_state):
     # Check if we reached 
-    for i in range(len(final_state)):
-        if (majority_cell != final_state[i]):
+    for final_cell in final_state:
+        if (final_cell != majority_cell):
             return 0
     return 1
 
@@ -135,8 +142,6 @@ def print_on_gen(ga_instance):
     global last_fitness
     solution, solution_fitness, solution_idx = ga_instance.best_solution(ga_instance.last_generation_fitness)
     print(f"Generation = {ga_instance.generations_completed}")
-    print(f"    Fitness    = {ga_instance.best_solution(pop_fitness=ga_instance.last_generation_fitness)[1]}")
-    print(f"    Change     = {ga_instance.best_solution(pop_fitness=ga_instance.last_generation_fitness)[1] - last_fitness}")
     print(f"    Sol    = {solution}")
     print(f"    Fitness     = {solution_fitness}")
     last_fitness = ga_instance.best_solution(pop_fitness=ga_instance.last_generation_fitness)[1]
@@ -160,21 +165,25 @@ if __name__ == "__main__":
         initial_population.append(random_rule(ca_neighborhood))
     normal_percents = generate_normal_1_percents(ca_start_state_count)
     for percent in normal_percents:
-        start_states.append(random_lattice(lattice_length, percent))
+        lattice = random_lattice(lattice_length, percent)
+        majority_cell = '1'
+        if (percent < 0.5):
+            majority_cell = '0'
+        start_states.append([majority_cell, lattice])
 
 
     # Pygad parameters 
-    num_generations = 5
+    num_generations = 10
     num_parents_mating = 10  # How many parents will create children 
     fitness_function = fitness_func  
-    parallel_processing=None  # can set equal to an Int to run GA with that many threads 
+    parallel_processing= None # None or ["process", 10]  # can set equal to an Int to run GA with that many threads 
     random_seed = 12345  # For reproducability 
+    save_best_solutions = True
 
     gene_space = [0, 1]  
     mutation_type = "swap"
     mutation_percent_genes = 10
     allow_duplicate_genes=True
-    save_best_solutions = True
     keep_parents = 0  # Number of parents kept in population along side children 
     crossover_type = "single_point"
 
@@ -195,7 +204,13 @@ if __name__ == "__main__":
                        save_best_solutions=save_best_solutions)
     ga_instance.run()
     
+    # Getting the best solution
     solution, solution_fitness, solution_idx = ga_instance.best_solution(ga_instance.last_generation_fitness)
     print(f"Parameters of the best solution : {solution}")
     print(f"Fitness value of the best solution = {solution_fitness}")
     print(f"Index of the best solution : {solution_idx}")
+
+    # Plotting fitness across generations 
+    ga_instance.plot_fitness()  
+
+
