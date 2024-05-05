@@ -170,6 +170,36 @@ def next_cell(current_state, rule_string, index, length, ca_radius):
         current_index -= 1 
     return rule_string[rule_index]
 
+# This is the function that will determine the next state of the cell given a rule string
+# With the two ending input cells being randomly chosen from the population rather than a neighborhood
+def next_cell_wireless(current_state, rule_string, index, length, ca_radius):
+    neighborhood_radius = ca_radius - 2
+    rule_index = 0
+    # The first bit is randomly chosen from the whole sample
+
+    if (current_state[rand.randint(0, len(current_state) - 1)] == 1):
+        rule_index += 1
+    rule_index = rule_index << 1
+
+    # The next bits are chosen from the neighborhood
+    current_index = index - neighborhood_radius
+    for i in range(neighborhood_radius * 2 + 1):
+        # Check for valid index
+        if (current_index >= length):
+            current_index -= length
+        if (current_index < 0):
+            current_index += length
+
+        if (current_state[current_index] == 1):
+            rule_index += 1
+        rule_index = rule_index << 1
+
+    # Final bit is also randomly chosen
+    if (current_state[rand.randint(0, len(current_state) - 1)] == 1):
+        rule_index += 1
+    return rule_string[rule_index]
+
+
 last_fitness = 0
 def on_generation(ga_instance):
     # Print the generation results
