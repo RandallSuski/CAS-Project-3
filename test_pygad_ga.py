@@ -183,8 +183,8 @@ def write_current_generation_data():
 if __name__ == "__main__":
     # CA parameters 
     lattice_length = 100
-    ca_start_state_count = 50
-    ca_rule_count = 50
+    ca_start_state_count = 100
+    ca_rule_count = 100
     ca_steps = 100   #number of time steps we will do 
     ca_radius = 3
     ca_neighborhood = (2 * ca_radius) + 1
@@ -205,8 +205,8 @@ if __name__ == "__main__":
 
 
     # Pygad parameters 
-    num_generations = 50
-    num_parents_mating = 10  # How many parents will create children 
+    num_generations = 100
+    num_parents_mating = round(ca_rule_count * 0.2)  # How many parents will create children 
     fitness_function = fitness_func  
     parallel_processing= None # None or ["process", 10]  # can set equal to an Int to run GA with that many threads 
     random_seed = 12345  # For reproducability 
