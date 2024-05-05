@@ -113,12 +113,32 @@ def mutation_function(parent1, parent2):
 def fitness_func(ga_instance, solution, solution_idx):
     #Run the GA on each of the initial configurations 
     fitness = 1.0
+    if (solution_idx == 3):
+        count0 = 0
+        count1 = 0
+        for start_state in start_states:
+            # count number of 1 and 0's in state
+            charcount0 = 0
+            charcount1 = 0
+            for char in start_state:
+                if (char == 1):
+                    charcount1 += 1
+                else: 
+                    charcount0 += 1
+            if (charcount0 > charcount1):
+                count0 += 1
+            else: 
+                count1 += 1
+        print(f" 0count: {count0}, 1count: {count1}")
+
     for start_state in start_states:
         majority_cell = start_state[0]
         start_lattice = start_state[1]
         final_state = simulate_ga(start_lattice, solution, ca_radius, ca_steps)
 
         result = get_state_fitness(majority_cell, final_state)
+        if (result == 1):
+            print(f"   win: {final_state}")
         fitness += result
 
     #Calculate the fraction of times it makes the correct choice
@@ -217,6 +237,7 @@ def on_generation(ga_instance):
 
     # Create I new IC for the next generation 
     normal_percents = generate_normal_1_percents(len(start_states))
+    print(f" normal percents: {normal_percents}")
     start_states = []
     for percent in normal_percents:
         lattice = random_lattice(lattice_length, percent)
@@ -241,8 +262,8 @@ def write_current_generation_data():
 if __name__ == "__main__":
     # CA parameters 
     lattice_length = 100
-    ca_start_state_count = 100
-    ca_rule_count = 100
+    ca_start_state_count = 50
+    ca_rule_count = 50
     ca_steps = 100   #number of time steps we will do 
     ca_radius = 3
     ca_neighborhood = (2 * ca_radius) + 1
