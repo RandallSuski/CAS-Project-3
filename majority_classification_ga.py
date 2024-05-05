@@ -1,22 +1,3 @@
-'''
-Each generation
-
-Fitness
-- if final state (not reached or not all the same color) = 0 
-- if final state is the majority from the start_state = 1 
-- else = 0 
-- total fitness = the fraction of times it produced the correct final configuration 
-
-Init: create 100 random rules (the GA's) and 100 random initial configurations 
-For each generation
-- Find the fitness for each GA 
-    - Run the GA on each of the 100 initial configurations 
-    - Calculate the fraction of times it makes the correct choice
-- Weighted randomly select 2 parents to create 2 children (50 times)
-- Use these children in next generation 
-
-textbooks_ga = "00000101000001100001010110000111000001110000010000010101010101110110010001110111000001010000000101111101111111111011011101111111"
-'''
 import array as array 
 import random
 from cellular_automata_gui import CellularAutomata2D
@@ -112,26 +93,6 @@ def create_children(parents):
     child2 = parent2[0:rand_index] + parent1[rand_index:length]
     return [child1, child2]
 
-'''
-Each generation
-
-Fitness
-- if final state (not reached or not all the same color) = 0 
-- if final state is the majority from the start_state = 1 
-- else = 0 
-- total fitness = the fraction of times it produced the correct final configuration 
-
-Init: create 100 random rules (the GA's) and 100 random initial configurations 
-For each generation
-- Find the fitness for each GA 
-    - Run the GA on each of the 100 initial configurations 
-    - Calculate the fraction of times it makes the correct choice
-- Weighted randomly select 2 parents to create 2 children (50 times)
-- Use these children in next generation 
-
-textbooks_ga = "00000101000001100001010110000111000001110000010000010101010101110110010001110111000001010000000101111101111111111011011101111111"
-'''
-
 #Store each lattice as a string (where each character is a cell with state '1' or '0')
 if __name__ == "__main__":
     # CA parameters 
@@ -188,25 +149,3 @@ if __name__ == "__main__":
         print(f"max fit: {gen_index} {max_fitness}")
         print(f"max rule: {max_fitness_rule}")
         #Use these children in next generation 
-
-'''
-    # Create the rule
-    rule_string = "01110101100000000001010010100110111010101010011111110111001111010111011000100000111010000010101100010101000111011011001010000110"
-
-    # Create init state 
-    start_state = random_lattice(lattice_length)
-
-    # Carry out the CA simulation 
-    ca_time_space.append(start_state)
-    current_state = start_state 
-    for i in range(ca_steps):
-        next_state = next_lattice(current_state, rule_string, ca_radius)
-        ca_time_space.append(next_state)
-        current_state = next_state
-    print("Make Graph")
-    # Feed the time space into our GUI
-    ca = CellularAutomata2D(400, 400)
-    ca.create_time_space_diagram(ca_time_space, len(start_state))
-    ca.mainloop()
-'''
-

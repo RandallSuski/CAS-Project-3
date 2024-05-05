@@ -7,6 +7,7 @@ Settings used in Paper
 - For the GA runs the chromosomes in the initial population were uniformly distributed over λ ∈ [0.0, 1.0]
 - top 20% of the population—the set of elite strings—is copied without modification into
 the next generation
+- Should be graphing the best fitness for that generation 
 
 Optimize 
 - Store start state with its majority value so that we don't calculate it each simulation
@@ -58,14 +59,33 @@ def random_lattice(length, percent):
             count0 -= 1
     return lattice 
 
-# Creates a random rule 
-def random_rule(ca_neighborhood):
+def generate_uniform_rules(n, ca_neighborhood):
+    # Create uniform percents 
+    uniform_rules= []
+    for i in range(n):
+        current_percent = i / (n - 1) 
+        uniform_rules.append(weighted_random_rule(ca_neighborhood, current_percent))
+    return uniform_rules
+
+
+# Creates a random rule with a given percent of 1's 
+def weighted_random_rule(ca_neighborhood, percent):    
     # Create the rule
     rule_length = 2 ** (ca_neighborhood) 
     rule = []
     states = [0, 1]
+
+    count1 = round(rule_length * percent)
+    count0 = rule_length - count1
+
     for i in range(rule_length):
-        rule.append(np.random.choice(states))
+        weights = [count0, count1]
+        rule_bit = rand.choices(states, weights=weights, k=1)[0]
+        rule.append(rule_bit)
+        if (rule_bit == 1):
+            count1 -= 1
+        else:
+            count0 -= 1
     return rule
 
 # Takes a string rule and returns it as an int list 
@@ -81,6 +101,14 @@ def string_rule_to_int_list(input_rule):
 
 ''' GA related functions '''
 
+# Define your custom mutation function
+def mutation_function(parent1, parent2):
+    # Randomly select a single point (index)
+    mutation_point = random.randint(0, len(parent1) - 1)
+    child1 = np.concatenate((parent1[:mutation_point], parent2[mutation_point:]))
+    child2 = np.concatenate((parent2[:mutation_point], parent1[mutation_point:]))
+    return child1, child2
+    
 # The fitness function for the GA 
 def fitness_func(ga_instance, solution, solution_idx):
     #Run the GA on each of the initial configurations 
@@ -154,7 +182,7 @@ def on_generation(ga_instance):
     last_fitness = ga_instance.best_solution(pop_fitness=ga_instance.last_generation_fitness)[1]
 
     # Store this generation data in the array 
-    gen_entry = [ga_instance.generations_completed, solution_fitness]  
+    gen_entry = [ga_instance.generations_completed, solution_fitness, solution]  
     generation_info.append(gen_entry)
 
     # Create I new IC for the next generation 
@@ -170,7 +198,7 @@ def on_generation(ga_instance):
 ''' Storing and graphing data '''
 
 def write_current_generation_data():
-    with open("generation-data.csv", "w", newline="") as csvfile:
+    with open("generation-data-mut-rate-0.csv", "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerows(generation_info)
 
@@ -191,9 +219,8 @@ if __name__ == "__main__":
 
 
     # Create the initial population and states
-    initial_population = []
-    for i in range(ca_rule_count):
-        initial_population.append(random_rule(ca_neighborhood))
+    initial_population = generate_uniform_rules(ca_rule_count, ca_neighborhood)
+
     normal_percents = generate_normal_1_percents(ca_start_state_count)
     start_states = []
     for percent in normal_percents:
@@ -207,14 +234,14 @@ if __name__ == "__main__":
     # Pygad parameters 
     num_generations = 100
     num_parents_mating = round(ca_rule_count * 0.2)  # How many parents will create children 
-    fitness_function = fitness_func  
     parallel_processing= None # None or ["process", 10]  # can set equal to an Int to run GA with that many threads 
     random_seed = 12345  # For reproducability 
-    save_best_solutions = True
+    #save_best_solutions = True
 
     gene_space = [0, 1]  
-    mutation_type = "random"
-    mutation_percent_genes = 30
+    #mutation_type = "swap"
+    #mutation_percent_genes = 30
+    mutation_rate=0
     allow_duplicate_genes=True
     keep_parents = round(ca_rule_count * 0.2)  # 20% are kept 
     crossover_type = "single_point"
@@ -234,17 +261,20 @@ if __name__ == "__main__":
     generation_info = []    
     ga_instance = pygad.GA(num_generations=num_generations,
                        num_parents_mating=num_parents_mating,
-                       fitness_func=fitness_function,
+                       fitness_func=fitness_func,
                        initial_population=initial_population,
                        keep_parents=keep_parents,
                        crossover_type=crossover_type,
-                       mutation_type=mutation_type,
-                       mutation_percent_genes=mutation_percent_genes,
+                       #mutation_type=mutation_type,
+                       #mutation_percent_genes=mutation_percent_genes,
+                       mutation_probability=mutation_rate,
                        random_seed=random_seed,
                        gene_space=gene_space,
                        allow_duplicate_genes=allow_duplicate_genes,
                        on_generation=on_generation, 
-                       save_best_solutions=save_best_solutions)
+                       #save_best_solutions=save_best_solutions,
+                       #mutation_func=mutation_function
+                       )
     ga_instance.run()
     write_current_generation_data()
     
