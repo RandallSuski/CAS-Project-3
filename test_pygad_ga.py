@@ -3,6 +3,11 @@ TODO
 - Save the solution and fitness data in a file 
     - Could store in global variable inside the onGeneration() function 
 
+Settings used in Paper 
+- For the GA runs the chromosomes in the initial population were uniformly distributed over λ ∈ [0.0, 1.0]
+- top 20% of the population—the set of elite strings—is copied without modification into
+the next generation
+
 Optimize 
 - Store start state with its majority value so that we don't calculate it each simulation
 - Finding the next lattice 
@@ -15,10 +20,13 @@ import pygad
 import numpy as np 
 import random as rand 
 import matplotlib.pyplot as plt
+import csv
 
-start_states = []  # [Majority Cell, Lattice]
+# Global variables so that we can get values into and out of the GA instance
+global start_states # [Majority Cell, Lattice]
 ca_steps = 100   #number of time steps we will do 
 ca_radius = 3
+generation_info = [] 
 
 ''' Generating the initial states '''
 # Generates a normal curve of values between 0 and 1 
@@ -87,7 +95,6 @@ def fitness_func(ga_instance, solution, solution_idx):
 
     #Calculate the fraction of times it makes the correct choice
     fitness = fitness / (len(start_states) + 1)
-    print(f"{solution_idx} : {fitness}")
     return fitness
 
 def get_state_fitness(majority_cell, final_state):
@@ -136,17 +143,43 @@ def next_cell(current_state, rule_string, index, length, ca_radius):
     return rule_string[rule_index]
 
 last_fitness = 0
-def print_on_gen(ga_instance):
+def on_generation(ga_instance):
+    # Print the generation results
     global last_fitness
+    global start_states 
     solution, solution_fitness, solution_idx = ga_instance.best_solution(ga_instance.last_generation_fitness)
     print(f"Generation = {ga_instance.generations_completed}")
     print(f"    Sol    = {solution}")
     print(f"    Fitness     = {solution_fitness}")
     last_fitness = ga_instance.best_solution(pop_fitness=ga_instance.last_generation_fitness)[1]
 
+    # Store this generation data in the array 
+    gen_entry = [ga_instance.generations_completed, solution_fitness]  
+    generation_info.append(gen_entry)
+
+    # Create I new IC for the next generation 
+    normal_percents = generate_normal_1_percents(len(start_states))
+    start_states = []
+    for percent in normal_percents:
+        lattice = random_lattice(lattice_length, percent)
+        majority_cell = 1
+        if (percent < 0.5):
+            majority_cell = 0
+        start_states.append([majority_cell, lattice])
+
+''' Storing and graphing data '''
+
+def write_current_generation_data():
+    with open("generation-data.csv", "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerows(generation_info)
+
+
+
+
+
 
 ''' Main '''
-
 if __name__ == "__main__":
     # CA parameters 
     lattice_length = 100
@@ -162,6 +195,7 @@ if __name__ == "__main__":
     for i in range(ca_rule_count):
         initial_population.append(random_rule(ca_neighborhood))
     normal_percents = generate_normal_1_percents(ca_start_state_count)
+    start_states = []
     for percent in normal_percents:
         lattice = random_lattice(lattice_length, percent)
         majority_cell = 1
@@ -171,8 +205,8 @@ if __name__ == "__main__":
 
 
     # Pygad parameters 
-    num_generations = 10
-    num_parents_mating = 20  # How many parents will create children 
+    num_generations = 50
+    num_parents_mating = 10  # How many parents will create children 
     fitness_function = fitness_func  
     parallel_processing= None # None or ["process", 10]  # can set equal to an Int to run GA with that many threads 
     random_seed = 12345  # For reproducability 
@@ -182,11 +216,22 @@ if __name__ == "__main__":
     mutation_type = "random"
     mutation_percent_genes = 30
     allow_duplicate_genes=True
-    keep_parents = 0  # Number of parents kept in population along side children 
+    keep_parents = round(ca_rule_count * 0.2)  # 20% are kept 
     crossover_type = "single_point"
+    '''
+    mutation_type, mutation_percent_genes, crossover_type, num_parents_mating
+    "random", 30, single_point, 20 -> 0.29, 0.25, 0.47   <---------
+    "swap", 30, single_point, 20 -> 0.06, 0.49, 0.06
+    None, 30, single_point, 20 -> 0.06, 0.06
+
+    "random", 30, single_point, 10 -> 0.49   <---------
+    "random", 30, single_point, 40 -> 0.27
+
+    '''
 
 
     # Running the GA 
+    generation_info = []    
     ga_instance = pygad.GA(num_generations=num_generations,
                        num_parents_mating=num_parents_mating,
                        fitness_func=fitness_function,
@@ -198,15 +243,17 @@ if __name__ == "__main__":
                        random_seed=random_seed,
                        gene_space=gene_space,
                        allow_duplicate_genes=allow_duplicate_genes,
-                       on_generation=print_on_gen, 
+                       on_generation=on_generation, 
                        save_best_solutions=save_best_solutions)
     ga_instance.run()
+    write_current_generation_data()
     
     # Getting the best solution
     solution, solution_fitness, solution_idx = ga_instance.best_solution(ga_instance.last_generation_fitness)
     print(f"Parameters of the best solution : {solution}")
     print(f"Fitness value of the best solution = {solution_fitness}")
     print(f"Index of the best solution : {solution_idx}")
+
 
     # Plotting fitness across generations 
     ga_instance.plot_fitness()  
