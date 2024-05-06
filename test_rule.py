@@ -1,6 +1,25 @@
 import array as array 
 import random
 from cellular_automata_gui import CellularAutomata2D
+import re
+
+# Returns a random lattice with the given length 
+def percent_random_lattice(length, percent):
+    lattice = ""
+    states = ['0', '1']
+
+    count1 = round(length * percent)
+    count0 = length - count1
+
+    for i in range(length):
+        weights = [count0, count1]
+        newCell = random.choices(states, weights=weights, k=1)[0]
+        lattice += newCell
+        if (newCell == '1'):
+            count1 -= 1
+        else:
+            count0 -= 1
+    return lattice 
 
 # Returns a random lattice with the given length 
 def random_lattice(length):
@@ -47,28 +66,17 @@ def fitness(state):
             return 0
     return 1
 
-'''
-Each generation
+def extract_numbers(input_string):
+    rule = ""
+    numbers = re.findall(r'\d+', input_string)
+    numbers = [int(num) for num in numbers]
+    return re.sub(r'\D', '', input_string)
 
-Fitness
-- if final state (not reached or not all the same color) = 0 
-- if final state is the majority from the start_state = 1 
-- else = 0 
-- total fitness = the fraction of times it produced the correct final configuration 
 
-Init: create 100 random rules (the GA's) and 100 random initial configurations 
-For each generation
-- Find the fitness for each GA 
-    - Run the GA on each of the 100 initial configurations 
-    - Calculate the fraction of times it makes the correct choice
-- Weighted randomly select 2 parents to create 2 children (50 times)
-- Use these children in next generation 
-
-textbooks_ga = "00000101000001100001010110000111000001110000010000010101010101110110010001110111000001010000000101111101111111111011011101111111"
-'''
 
 #Store each lattice as a string (where each character is a cell with state '1' or '0')
 if __name__ == "__main__":
+
     # CA parameters 
     lattice_length = 200
     ca_steps = 200   #number of time steps we will do 
@@ -78,23 +86,35 @@ if __name__ == "__main__":
     ca_rule_number = 110
 
     # Create the rule
-    rule_string = "10110010111010001111101111011111000010010011111001001011010111010101110111001101101001000001001100111001010011001101100001111111"
+    input_string = "[1. 1. 1. 0. 0. 0. 1. 1. 1. 0. 0. 0. 1. 1. 1. 1. 1. 1. 1. 0. 0. 0. 0. 0. 0. 1. 0. 1. 1. 1. 0. 0. 0. 1. 1. 1. 1. 0. 0. 0. 0. 1. 1. 1. 1. 0. 0. 1. 0. 1. 1. 0. 0. 1. 0. 1. 1. 1. 1. 1. 0. 1. 0. 1. 0. 1. 0. 1. 0. 0. 1. 1. 0. 0. 0. 1. 1. 0. 0. 1. 1. 1. 0. 0. 0. 1. 1. 0. 0. 1. 0. 0. 1. 1. 1. 1. 0. 1. 0. 1. 1. 0. 1. 1. 1. 0. 1. 1. 0. 0. 1. 1. 0. 0. 1. 1. 0. 1. 0. 1. 1. 0. 1. 1. 1. 1. 1. 1.]"
+    rule_string = extract_numbers(input_string)
+    print(rule_string)
+    rule_string = "00000101000001100001010110000111000001110000010000010101010101110110010001110111000001010000000101111101111111111011011101111111"
 
-    # Create init state 
-    start_state = random_lattice(lattice_length)
+    # Create init states over λ ∈ [0.0, 1.0]
+    start_states = []
+    percents = [0.45] #[0.2, 0.4, 0.6, 0.8]
+    for percent in percents:
+        start_states.append(percent_random_lattice(lattice_length, percent))
 
-    # Carry out the CA simulation 
-    ca_time_space.append(start_state)
-    current_state = start_state 
-    for i in range(ca_steps):
-        next_state = next_lattice(current_state, rule_string, ca_radius)
-        ca_time_space.append(next_state)
-        current_state = next_state
+
+    # Graph each start state against the rule 
+    for start_state in start_states: 
+        # Carry out the CA simulation 
+        print(start_state)  
+        ca_time_space = []
+        ca_time_space.append(start_state)
+        current_state = start_state 
+        for i in range(ca_steps):
+            next_state = next_lattice(current_state, rule_string, ca_radius)
+            ca_time_space.append(next_state)
+            current_state = next_state
         
-    # Feed the time space into our GUI
-    ca = CellularAutomata2D(400, 400)
-    ca.create_time_space_diagram(ca_time_space, len(start_state))
-    ca.mainloop()
+        print(f"final: {next_state}")
+        # Feed the time space into our GUI
+        ca = CellularAutomata2D(400, 400)
+        ca.create_time_space_diagram(ca_time_space, len(start_state))
+        ca.mainloop()
 
 
 
