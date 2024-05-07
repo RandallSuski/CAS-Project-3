@@ -25,6 +25,7 @@ import csv
 
 # Global variables so that we can get values into and out of the GA instance
 global start_states # [Majority Cell, Lattice]
+global zero_fitness
 ca_steps = 100   #number of time steps we will do 
 ca_radius = 3
 generation_info = [] 
@@ -33,12 +34,10 @@ generation_info = []
 # Generates a normal curve of values between 0 and 1 
 def generate_normal_1_percents(n):
     # Generate normal curve
-    rand_values = np.random.normal(size=n)
-
-    # Normalize the values to between [0,1]
-    min = np.min(rand_values)
-    max = np.max(rand_values)
-    normalized_values = (rand_values - min) / (max - min)
+    mean = 0.5
+    sd = 0.15
+    normalized_values = np.random.normal(mean, sd, n)
+    normalized_values = np.clip(normalized_values, 0, 1)
     return normalized_values
 
 # Creates an initial state using the percent value (from 0 to 1) as the chance to choose 1 
@@ -48,6 +47,11 @@ def random_lattice(length, percent):
 
     count1 = round(length * percent)
     count0 = length - count1
+    # Prevent 50/50 case 
+    if (count1 == (length/2)):
+        shift = rand.choice([-1,1])
+        count1 += shift
+        count0 -= shift 
 
     for i in range(length):
         weights = [count0, count1]
@@ -110,45 +114,39 @@ def mutation_function(parent1, parent2):
     return child1, child2
     
 # The fitness function for the GA 
-def fitness_func(ga_instance, solution, solution_idx):
+def my_fitness_func(ga_instance, solution, solution_idx):
     #Run the GA on each of the initial configurations 
     fitness = 1.0
-    if (solution_idx == 3):
-        count0 = 0
-        count1 = 0
-        for start_state in start_states:
-            # count number of 1 and 0's in state
-            charcount0 = 0
-            charcount1 = 0
-            for char in start_state:
-                if (char == 1):
-                    charcount1 += 1
-                else: 
-                    charcount0 += 1
-            if (charcount0 > charcount1):
-                count0 += 1
-            else: 
-                count1 += 1
-        print(f" 0count: {count0}, 1count: {count1}")
 
+    if (zero_fitness):
+        return 0
     for start_state in start_states:
-        majority_cell = start_state[0]
         start_lattice = start_state[1]
         final_state = simulate_ga(start_lattice, solution, ca_radius, ca_steps)
 
-        result = get_state_fitness(majority_cell, final_state)
-        if (result == 1):
-            print(f"   win: {final_state}")
+        result = get_state_fitness(start_lattice, final_state)
         fitness += result
 
     #Calculate the fraction of times it makes the correct choice
     fitness = fitness / (len(start_states) + 1)
     return fitness
 
-def get_state_fitness(majority_cell, final_state):
+def get_state_fitness(start_state, final_state):
+    # Find the most used in first
+    count1 = 0
+    count0 = 0
+    for i in range(len(start_state)):
+        if (start_state[i] == 1):
+            count1 += 1
+        else:
+            count0 += 1
+    majority_cell = 1
+    if (count0 > count1): 
+        majority_cell = 0
+
     # Check if we reached 
-    for final_cell in final_state:
-        if (final_cell != majority_cell):
+    for i in range(len(final_state)):
+        if (majority_cell != final_state[i]):
             return 0
     return 1
 
@@ -225,6 +223,7 @@ def on_generation(ga_instance):
     # Print the generation results
     global last_fitness
     global start_states 
+    global zero_fitness
     solution, solution_fitness, solution_idx = ga_instance.best_solution(ga_instance.last_generation_fitness)
     print(f"Generation = {ga_instance.generations_completed}")
     print(f"    Sol    = {solution}")
@@ -237,7 +236,7 @@ def on_generation(ga_instance):
 
     # Create I new IC for the next generation 
     normal_percents = generate_normal_1_percents(len(start_states))
-    print(f" normal percents: {normal_percents}")
+    #print(f" normal percents: {normal_percents}")
     start_states = []
     for percent in normal_percents:
         lattice = random_lattice(lattice_length, percent)
@@ -245,6 +244,8 @@ def on_generation(ga_instance):
         if (percent < 0.5):
             majority_cell = 0
         start_states.append([majority_cell, lattice])
+    
+
 
 ''' Storing and graphing data '''
 
@@ -261,6 +262,7 @@ def write_current_generation_data():
 ''' Main '''
 if __name__ == "__main__":
     # CA parameters 
+    zero_fitness = False
     lattice_length = 100
     ca_start_state_count = 50
     ca_rule_count = 50
@@ -287,14 +289,14 @@ if __name__ == "__main__":
     num_parents_mating = round(ca_rule_count * 0.2)  # How many parents will create children 
     parallel_processing= None # None or ["process", 10]  # can set equal to an Int to run GA with that many threads 
     random_seed = 12345  # For reproducability 
-    #save_best_solutions = True
+    save_best_solutions = False
+    save_solutions = False
 
     gene_space = [0, 1]  
-    #mutation_type = "swap"
-    #mutation_percent_genes = 30
-    mutation_rate=0
+    mutation_type = "random"
+    mutation_num_genes = 2
     allow_duplicate_genes=True
-    keep_parents = round(ca_rule_count * 0.2)  # 20% are kept 
+    keep_parents = 0  # 20% are kept 
     crossover_type = "single_point"
     '''
     mutation_type, mutation_percent_genes, crossover_type, num_parents_mating
@@ -312,20 +314,18 @@ if __name__ == "__main__":
     generation_info = []    
     ga_instance = pygad.GA(num_generations=num_generations,
                        num_parents_mating=num_parents_mating,
-                       fitness_func=fitness_func,
+                       fitness_func=my_fitness_func,
                        initial_population=initial_population,
                        keep_parents=keep_parents,
                        crossover_type=crossover_type,
-                       #mutation_type=mutation_type,
-                       #mutation_percent_genes=mutation_percent_genes,
-                       mutation_probability=mutation_rate,
+                       mutation_type=mutation_type,
+                       mutation_num_genes=mutation_num_genes,
                        random_seed=random_seed,
                        gene_space=gene_space,
                        allow_duplicate_genes=allow_duplicate_genes,
                        on_generation=on_generation, 
-                       #save_best_solutions=save_best_solutions,
-                       #mutation_func=mutation_function
-                       )
+                       save_best_solutions=save_best_solutions,
+                       save_solutions=save_solutions)
     ga_instance.run()
     write_current_generation_data()
     
