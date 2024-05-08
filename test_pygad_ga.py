@@ -38,7 +38,30 @@ def generate_normal_1_percents(n):
     sd = 0.15
     normalized_values = np.random.normal(mean, sd, n)
     normalized_values = np.clip(normalized_values, 0, 1)
-    return normalized_values
+    
+    # Takeout some values 
+    count0 = 0
+    count1 = 0
+    half = n/2 
+    values = []
+    for val in normalized_values:
+        if (val > 0.5 and count1 < half):
+            values.append(val)
+            count1 += 1
+        if (val < 0.5 and count0 < half):
+            values.append(val)
+            count0 += 1
+        
+    # Get 50/50
+    while (count1 < half or count0 < half):
+        new_val = np.random.normal(mean, sd, 1)[0]
+        if (count1 < half and new_val > 0.5):
+            values.append(new_val)
+            count1 += 1
+        if (count0 < half and new_val < 0.5):
+            values.append(new_val)
+            count0 += 1
+    return values
 
 # Creates an initial state using the percent value (from 0 to 1) as the chance to choose 1 
 def random_lattice(length, percent):
@@ -47,11 +70,6 @@ def random_lattice(length, percent):
 
     count1 = round(length * percent)
     count0 = length - count1
-    # Prevent 50/50 case 
-    if (count1 == (length/2)):
-        shift = rand.choice([-1,1])
-        count1 += shift
-        count0 -= shift 
 
     for i in range(length):
         weights = [count0, count1]
@@ -118,8 +136,6 @@ def my_fitness_func(ga_instance, solution, solution_idx):
     #Run the GA on each of the initial configurations 
     fitness = 1.0
 
-    if (zero_fitness):
-        return 0
     for start_state in start_states:
         start_lattice = start_state[1]
         final_state = simulate_ga(start_lattice, solution, ca_radius, ca_steps)
@@ -234,6 +250,23 @@ def on_generation(ga_instance):
     gen_entry = [ga_instance.generations_completed, solution_fitness, solution]  
     generation_info.append(gen_entry)
 
+    
+    count0 = 0
+    count1 = 0
+    for state in start_states:
+        vcount0 = 0
+        vcount1 = 0
+        for val in state[1]:
+            if (val == 0):
+                vcount0 += 1
+            else: 
+                vcount1 += 1
+        if (vcount0 > vcount1):
+            count0 += 1
+        if (vcount1 > vcount0): 
+            count1 += 1
+    print(f"  0: {count0}  1: {count1}")
+
     # Create I new IC for the next generation 
     normal_percents = generate_normal_1_percents(len(start_states))
     #print(f" normal percents: {normal_percents}")
@@ -244,6 +277,23 @@ def on_generation(ga_instance):
         if (percent < 0.5):
             majority_cell = 0
         start_states.append([majority_cell, lattice])
+    
+    print(len(start_states))
+    count0 = 0
+    count1 = 0
+    for state in start_states:
+        vcount0 = 0
+        vcount1 = 0
+        for val in state[1]:
+            if (val == 0):
+                vcount0 += 1
+            else: 
+                vcount1 += 1
+        if (vcount0 > vcount1):
+            count0 += 1
+        if (vcount1 > vcount0): 
+            count1 += 1
+    print(f"  0: {count0}  1: {count1}")
     
 
 
@@ -273,6 +323,7 @@ if __name__ == "__main__":
 
     # Create the initial population and states
     initial_population = generate_uniform_rules(ca_rule_count, ca_neighborhood)
+    initial_population[1] = [0,0,0,0,0,1,0,1,0,0,0,0,0,1,1,0,0,0,0,1,0,1,0,1,1,0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0,0,1,0,0,0,0,0,1,0,1,0,1,0,1,0,1,0,1,1,1,0,1,1,0,0,1,0,0,0,1,1,1,0,1,1,1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,0,1,1,0,1,1,1,0,1,1,1,1,1,1,1]
 
     normal_percents = generate_normal_1_percents(ca_start_state_count)
     start_states = []
@@ -286,17 +337,18 @@ if __name__ == "__main__":
 
     # Pygad parameters 
     num_generations = 100
-    num_parents_mating = round(ca_rule_count * 0.2)  # How many parents will create children 
+    num_parents_mating = ca_rule_count  # How many parents will create children 
     parallel_processing= None # None or ["process", 10]  # can set equal to an Int to run GA with that many threads 
     random_seed = 12345  # For reproducability 
     save_best_solutions = False
     save_solutions = False
+    parent_selection_type = "rank"
 
     gene_space = [0, 1]  
     mutation_type = "random"
-    mutation_num_genes = 2
+    mutation_num_genes = 1
     allow_duplicate_genes=True
-    keep_parents = 0  # 20% are kept 
+    keep_elitism= round(ca_rule_count * 0.2)  # 20% are kept 
     crossover_type = "single_point"
     '''
     mutation_type, mutation_percent_genes, crossover_type, num_parents_mating
@@ -316,7 +368,7 @@ if __name__ == "__main__":
                        num_parents_mating=num_parents_mating,
                        fitness_func=my_fitness_func,
                        initial_population=initial_population,
-                       keep_parents=keep_parents,
+                       keep_elitism=keep_elitism,
                        crossover_type=crossover_type,
                        mutation_type=mutation_type,
                        mutation_num_genes=mutation_num_genes,
@@ -325,7 +377,8 @@ if __name__ == "__main__":
                        allow_duplicate_genes=allow_duplicate_genes,
                        on_generation=on_generation, 
                        save_best_solutions=save_best_solutions,
-                       save_solutions=save_solutions)
+                       save_solutions=save_solutions,
+                       parent_selection_type=parent_selection_type)
     ga_instance.run()
     write_current_generation_data()
     
